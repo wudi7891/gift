@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>🎁</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    cursor: pointer;
+  }
+  canvas {
+    position: fixed;
+    inset: 0;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  .label {
+    position: fixed;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: "Courier New", "Microsoft JhengHei", monospace;
+    font-weight: bold;
+    letter-spacing: 0.25em;
+    pointer-events: none;
+    transition: opacity 0.8s;
+  }
+  #hint {
+    bottom: 14%;
+    color: #8a6fc0;
+    font-size: 14px;
+    animation: blink 1.4s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0.25; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hint" class="label">▼ 拆禮物 ▼</div>
+
+<script>
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const hint = document.getElementById('hint');
+
+let S, W, H, cx, cy;
+function resize() {
+  S = Math.max(2, Math.floor(Math.min(innerWidth, innerHeight) / 130));
+  W = Math.ceil(innerWidth / S);
+  H = Math.ceil(innerHeight / S);
+  cv.width = W;
+  cv.height = H;
+  cv.style.width = W * S + 'px';
+  cv.style.height = H * S + 'px';
+  cx = W >> 1;
+  cy = (H >> 1) - 6;
+}
+addEventListener('resize', resize);
+resize();
+
+function px(x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.round(x), Math.round(y), w, h);
+}
+
+function sprite(rows, pal, x, y) {
+  for (let j = 0; j < rows.length; j++)
+    for (let i = 0; i < rows[j].length; i++) {
+      const c = rows[j][i];
+      if (c !== '.') px(x + i, y + j, 1, 1, pal[c]);
+    }
+}
+
+function line(x0, y0, x1, y1, color) {
+  x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+  const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+  for (;;) {
+    px(x0, y0, 1, 1, color);
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = err * 2;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  }
+}
+
+// ---------- sprites ----------
+const BOW = [
+  '.YY.....YY.',
+  'YYYY...YYYY',
+  'YOYYY.YYYOY',
+  'YYOYYKYYOYY',
+  '.YYYKKKYYY.',
+  '...YKKKY...',
+];
+const GOLD = { Y: '#ffd447', O: '#fff3a6', K: '#e0a020' };
+const RED_BOW = { Y: '#ff4f7d', O: '#ffa3bd', K: '#c21d4e' };
+
+const ROSE = [
+  '....22222....',
+  '..22122212244',
+  '5421211221344',
+  '5443212112444',
+  '5444432124443',
+  '5444444244443',
+  '5444444244433',
+  '5444442444433',
+  '.54444244443.',
+  '.54442444433.',
+  '..444234433..',
+  '...3323333...',
+  '.....2322....',
+];
+const ROSE_PAL = { 1: '#4a0510', 2: '#8a0c1a', 3: '#c2141f', 4: '#e5282b', 5: '#ff6257' };
+
+const LEAF_L = ['.GGg.', 'GGGgg', '.Ggg.'];
+const BIG_HEART = ['.HH.HH.', 'HLHHHHH', 'HHHHHHH', '.HHHHH.', '..HHH..', '...H...'];
+const LEAF_PAL = { G: '#3fae58', g: '#1f6b33' };
+
+const HEART = ['.H.H.', 'HHHHH', '.HHH.', '..H..'];
+
+// ---------- gift box ----------
+function drawBody(x, y) {            // x = center, y = top of body
+  px(x - 14, y, 28, 20, '#5b2d9a');
+  px(x - 14, y, 2, 20, '#7d4bc4');    // left highlight
+  px(x + 10, y, 4, 20, '#452178');    // right shade
+  px(x - 14, y, 28, 2, '#3a1a66');    // shadow under lid
+  px(x - 14, y + 19, 28, 1, '#341659');
+  // little stars on the wrapping
+  [[-9, 6], [-6, 14], [7, 9], [5, 16], [-10, 11]].forEach(([a, b]) => px(x + a, y + b, 1, 1, '#a57be8'));
+  // ribbon
+  px(x - 2, y, 4, 20, '#ffd447');
+  px(x + 1, y, 1, 20, '#e0a020');
+  px(x - 2, y, 4, 2, '#c98a10');
+}
+
+function drawLid(x, y) {             // y = top of lid
+  px(x - 16, y, 32, 6, '#6d38b5');
+  px(x - 16, y, 32, 1, '#9a68e0');
+  px(x - 16, y, 2, 6, '#8a56d6');
+  px(x + 12, y, 4, 6, '#52278c');
+  px(x - 16, y + 5, 32, 1, '#452178');
+  px(x - 2, y, 4, 6, '#ffd447');
+  px(x + 1, y, 1, 6, '#e0a020');
+  sprite(BOW, GOLD, x - 5, y - 6);
+}
+
+// ---------- bouquet ----------
+const coneHW = y => Math.round(3 + (6 - y) * 16 / 34);
+
+function drawBouquet(ox, oy) {       // (ox, oy) = where the ribbon ties
+  // back paper
+  for (let y = -30; y <= -10; y++) {
+    const hw = coneHW(y);
+    px(ox - hw, oy + y, hw * 2 + 1, 1, y < -28 ? '#ffc9da' : '#f29dba');
+  }
+
+  // stems
+  const heads = [[-13, -27], [13, -27], [0, -35]];
+  heads.forEach(([hx, hy]) => {
+    line(ox + hx, oy + hy, ox, oy + 2, '#2f8f46');
+    line(ox + hx + 1, oy + hy, ox + 1, oy + 2, '#1f6b33');
+  });
+
+  // leaves
+  [[-8, -24], [4, -23], [-2, -30], [-17, -25], [13, -25], [-5, -18], [1, -17], [-24, -33], [20, -33], [-11, -44], [7, -45]]
+    .forEach(([a, b]) => sprite(LEAF_L, LEAF_PAL, ox + a, oy + b));
+
+  // baby's breath
+  [[-9, -47], [9, -48], [-3, -24], [4, -26], [-23, -37], [23, -38], [0, -53], [-15, -45], [15, -44], [-6, -33], [7, -32], [-20, -43], [20, -43]]
+    .forEach(([a, b], i) => px(ox + a, oy + b, 1, 1, i % 3 ? '#ffffff' : '#ffe9a8'));
+
+  // roses
+  heads.forEach(([hx, hy]) => {
+    px(ox + hx - 2, oy + hy, 5, 1, '#3fae58');
+    px(ox + hx - 1, oy + hy + 1, 3, 1, '#1f6b33');
+    sprite(ROSE, ROSE_PAL, ox + hx - 6, oy + hy - 13);
+  });
+
+  // front paper (two flaps with a V opening)
+  for (let y = -20; y <= 6; y++) {
+    const hw = coneHW(y);
+    const gap = y < -8 ? Math.round((-8 - y) * 0.85) : 0;
+    const w = hw - gap;
+    if (w <= 0) continue;
+    px(ox - hw, oy + y, w + (gap ? 0 : 1), 1, '#fff6ea');
+    px(ox + gap + 1, oy + y, w, 1, '#f6e3d0');
+    px(ox - hw, oy + y, 1, 1, '#e8cdb4');
+    px(ox + hw, oy + y, 1, 1, '#dcbd9f');
+    if (gap) {
+      px(ox - gap - 1, oy + y, 1, 1, '#ffffff');
+      px(ox + gap + 1, oy + y, 1, 1, '#fffaf2');
+    }
+  }
+
+  // stem ends
+  px(ox - 2, oy + 7, 1, 8, '#2f8f46');
+  px(ox - 1, oy + 7, 1, 9, '#1f6b33');
+  px(ox, oy + 7, 1, 10, '#3fae58');
+  px(ox + 1, oy + 7, 1, 9, '#1f6b33');
+  px(ox + 2, oy + 7, 1, 7, '#2f8f46');
+
+  sprite(BOW, RED_BOW, ox - 5, oy + 1);
+}
+
+// ---------- particles ----------
+let parts = [];
+function burst(x, y) {
+  for (let i = 0; i < 46; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 20 + Math.random() * 70;
+    parts.push({
+      x, y,
+      vx: Math.cos(a) * sp,
+      vy: Math.sin(a) * sp - 40,
+      g: 90,
+      life: 0.8 + Math.random() * 0.9,
+      heart: i % 4 === 0,
+      color: ['#ffd447', '#fff3a6', '#ff8fb0', '#ffffff', '#c79bff'][i % 5],
+    });
+  }
+}
+function petal() {
+  parts.push({
+    x: cx + (Math.random() - 0.5) * Math.min(W, 150),
+    y: -3,
+    vx: 0,
+    vy: 9 + Math.random() * 9,
+    g: 0,
+    sway: Math.random() * 6.28,
+    life: 30,
+    petal: true,
+    color: Math.random() < 0.5 ? '#e8214f' : '#ff5c85',
+  });
+}
+function updateParts(dt, t) {
+  parts = parts.filter(p => p.life > 0 && p.y < H + 5);
+  for (const p of parts) {
+    p.life -= dt;
+    p.vy += p.g * dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    let x = p.x;
+    if (p.petal) x += Math.sin(t * 1.5 + p.sway) * 4;
+    if (p.heart) sprite(HEART, { H: p.color }, Math.round(x) - 2, Math.round(p.y) - 2);
+    else if (p.petal) { px(x, p.y, 2, 1, p.color); px(x + 1, p.y + 1, 1, 1, '#9c0f38'); }
+    else px(x, p.y, p.life > 0.5 ? 2 : 1, p.life > 0.5 ? 2 : 1, p.color);
+  }
+}
+
+// twinkles around the box / bouquet
+const twinkles = Array.from({ length: 14 }, (_, i) => ({
+  a: Math.random() * 6.28,
+  r: 26 + Math.random() * 26,
+  ph: Math.random() * 6.28,
+  sp: 1.5 + Math.random() * 2,
+  gold: i % 2,
+}));
+function drawTwinkles(t, yc, done) {
+  for (const s of twinkles) {
+    const v = Math.sin(t * s.sp + s.ph);
+    if (v < 0.2) continue;
+    const x = Math.round(cx + Math.cos(s.a) * s.r);
+    const y = Math.round(yc + Math.sin(s.a) * s.r * 0.9);
+    const col = done ? (s.gold ? '#ffd447' : '#ffb0c4') : (s.gold ? '#ffd447' : '#b98cff');
+    px(x, y, 1, 1, col);
+    if (v > 0.8) {
+      px(x - 1, y, 3, 1, col);
+      px(x, y - 1, 1, 3, col);
+      px(x, y, 1, 1, '#ffffff');
+    }
+  }
+}
+
+// ---------- state ----------
+let state = 'idle';   // idle -> opening -> done
+let tOpen = 0, tDone = 0, burstDone = false, petalTimer = 0;
+
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const easeOutBack = x => 1 + 2.2 * Math.pow(x - 1, 3) + 1.2 * Math.pow(x - 1, 2);
+
+addEventListener('pointerdown', () => {
+  const now = performance.now() / 1000;
+  if (state === 'idle') {
+    state = 'opening';
+    tOpen = now;
+    burstDone = false;
+    hint.style.opacity = 0;
+    hint.style.animation = 'none';
+  } else if (state === 'done') {
+    state = 'idle';
+    parts = [];
+    hint.style.opacity = '';
+    hint.style.animation = '';
+  }
+});
+
+let last = performance.now() / 1000;
+function frame(ms) {
+  const now = ms / 1000;
+  const dt = Math.min(0.05, now - last);
+  last = now;
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  const bodyTop = cy + 2;
+
+  if (state === 'idle') {
+    const bob = Math.round(Math.sin(now * 2) * 1.5);
+    const wig = now % 3 < 0.4 ? Math.round(Math.sin(now * 40)) : 0;
+    drawTwinkles(now, cy + 6, false);
+    drawBody(cx + wig, bodyTop + bob);
+    drawLid(cx + wig, bodyTop - 6 + bob);
+  } else if (state === 'opening') {
+    const t = now - tOpen;
+    drawTwinkles(now, cy + 4, t > 1.5);
+
+    if (t < 0.7) {
+      // shake harder and harder, light leaking from under the lid
+      const amp = 1 + t * 3;
+      const sx = Math.round(Math.sin(t * 60) * amp * 0.6);
+      drawBody(cx + sx, bodyTop);
+      px(cx + sx - 14, bodyTop - 1, 28, 1, '#fff6a8');
+      drawLid(cx + sx, bodyTop - 7 - Math.round(t * 2));
+    } else {
+      if (!burstDone) { burst(cx, bodyTop); burstDone = true; }
+      const tf = Math.max(0, t - 1.5);
+      const boxDy = 60 * tf * tf;
+      const boxA = clamp01(1 - tf / 0.8);
+
+      // bouquet rises out of the box
+      const k = easeOutBack(clamp01((t - 0.75) / 1.2));
+      const oy = cy + 80 + (cy + 22 - (cy + 80)) * k;
+      ctx.save();
+      if (boxA > 0) {
+        ctx.beginPath();
+        ctx.rect(0, 0, W, bodyTop + 20 + boxDy);
+        ctx.clip();
+      }
+      drawBouquet(cx, Math.round(oy));
+      ctx.restore();
+
+      if (boxA > 0) {
+        ctx.globalAlpha = boxA;
+        drawBody(cx, bodyTop + boxDy);
+        ctx.globalAlpha = 1;
+      }
+      // lid flies away
+      const tl = t - 0.7;
+      const ly = bodyTop - 8 - 95 * tl + 120 * tl * tl;
+      if (ly < H + 10) drawLid(cx + 22 * tl, ly);
+
+      if (t > 2.6) { state = 'done'; tDone = now; }
+    }
+  } else {
+    drawTwinkles(now, cy + 4, true);
+    petalTimer -= dt;
+    if (petalTimer <= 0) { petal(); petalTimer = 0.35 + Math.random() * 0.4; }
+    drawBouquet(cx, cy + 22 + Math.round(Math.sin(now * 1.6) * 1.5));
+    // beating heart
+    ctx.globalAlpha = clamp01((now - tDone) / 0.8);
+    const hx = cx - 3, hy = cy + 49;
+    if ((now - tDone) % 1.1 < 0.18)
+      [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([a, b]) => sprite(BIG_HEART, { H: '#c21d4e', L: '#c21d4e' }, hx + a, hy + b));
+    sprite(BIG_HEART, { H: '#ff5c85', L: '#ffd0dc' }, hx, hy);
+    ctx.globalAlpha = 1;
+  }
+
+  updateParts(dt, now);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
